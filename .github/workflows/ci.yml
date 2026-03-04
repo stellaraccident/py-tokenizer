@@ -1,0 +1,147 @@
+# Copyright 2026 The IREE Authors
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions.
+# See https://llvm.org/LICENSE.txt for license information.
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: pre-commit/action@v3.0.1
+
+  test-release:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install build deps
+        run: pip install scikit-build-core nanobind numpy pytest
+
+      - name: Clone IREE
+        run: |
+          IREE_VERSION=$(python3 -c "import json; print(json.load(open('version.json'))['iree-version'])")
+          git clone --depth 1 --branch "iree-${IREE_VERSION}" \
+            https://github.com/iree-org/iree.git /tmp/iree || \
+          git clone --depth 1 https://github.com/iree-org/iree.git /tmp/iree
+
+      - name: Build
+        run: |
+          cmake -B build -G Ninja \
+            -DIREE_SOURCE_DIR=/tmp/iree \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target _iree_tokenizer
+
+      - name: Test
+        run: |
+          ln -s $(pwd)/build/_iree_tokenizer*.so src/iree/tokenizer/
+          PYTHONPATH=src pytest tests/ -v
+
+  test-asan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build deps
+        run: pip install scikit-build-core nanobind numpy pytest
+
+      - name: Clone IREE
+        run: |
+          IREE_VERSION=$(python3 -c "import json; print(json.load(open('version.json'))['iree-version'])")
+          git clone --depth 1 --branch "iree-${IREE_VERSION}" \
+            https://github.com/iree-org/iree.git /tmp/iree || \
+          git clone --depth 1 https://github.com/iree-org/iree.git /tmp/iree
+
+      - name: Build with ASAN
+        run: |
+          cmake -B build-asan -G Ninja \
+            -DIREE_SOURCE_DIR=/tmp/iree \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DIREE_TOKENIZER_ENABLE_ASAN=ON
+          cmake --build build-asan --target _iree_tokenizer
+
+      - name: Test under ASAN
+        run: |
+          ln -s $(pwd)/build-asan/_iree_tokenizer*.so src/iree/tokenizer/
+          ASAN_RT=$(clang++ -print-file-name=libclang_rt.asan-x86_64.so)
+          LD_PRELOAD=$ASAN_RT \
+          ASAN_OPTIONS=detect_leaks=0 \
+          PYTHONPATH=src \
+            pytest tests/ -v
+
+  benchmark:
+    runs-on: ubuntu-24.04
+    needs: [test-release]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build deps
+        run: pip install scikit-build-core nanobind numpy pytest tokenizers tiktoken rich huggingface-hub
+
+      - name: Clone IREE
+        run: |
+          IREE_VERSION=$(python3 -c "import json; print(json.load(open('version.json'))['iree-version'])")
+          git clone --depth 1 --branch "iree-${IREE_VERSION}" \
+            https://github.com/iree-org/iree.git /tmp/iree || \
+          git clone --depth 1 https://github.com/iree-org/iree.git /tmp/iree
+
+      - name: Build
+        run: |
+          cmake -B build -G Ninja \
+            -DIREE_SOURCE_DIR=/tmp/iree \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target _iree_tokenizer
+
+      - name: Run benchmarks
+        run: |
+          ln -s $(pwd)/build/_iree_tokenizer*.so src/iree/tokenizer/
+          PYTHONPATH=src python benchmarks/bench_comparison.py \
+            --iterations 100 \
+            --output benchmark_results.json
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark_results.json
