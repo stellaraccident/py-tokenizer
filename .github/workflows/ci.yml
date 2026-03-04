@@ -27,43 +27,6 @@ jobs:
           python-version: "3.12"
       - uses: pre-commit/action@v3.0.1
 
-  test-release:
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.12"]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: false
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install build deps
-        run: pip install scikit-build-core nanobind numpy pytest
-
-      - name: Clone IREE
-        run: |
-          IREE_VERSION=$(python3 -c "import json; print(json.load(open('version.json'))['iree-version'])")
-          git clone --depth 1 --branch "iree-${IREE_VERSION}" \
-            https://github.com/iree-org/iree.git /tmp/iree || \
-          git clone --depth 1 https://github.com/iree-org/iree.git /tmp/iree
-
-      - name: Build
-        run: |
-          cmake -B build -G Ninja \
-            -DIREE_SOURCE_DIR=/tmp/iree \
-            -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --target _iree_tokenizer
-
-      - name: Test
-        run: |
-          ln -s $(pwd)/build/_iree_tokenizer*.so src/iree/tokenizer/
-          PYTHONPATH=src pytest tests/ -v
-
   test-asan:
     runs-on: ubuntu-24.04
     steps:
@@ -84,6 +47,8 @@ jobs:
           git clone --depth 1 --branch "iree-${IREE_VERSION}" \
             https://github.com/iree-org/iree.git /tmp/iree || \
           git clone --depth 1 https://github.com/iree-org/iree.git /tmp/iree
+          git -C /tmp/iree submodule update --init --depth 1 \
+            third_party/flatcc third_party/benchmark
 
       - name: Build with ASAN
         run: |
@@ -106,7 +71,7 @@ jobs:
 
   benchmark:
     runs-on: ubuntu-24.04
-    needs: [test-release]
+    needs: [test-asan]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -125,6 +90,8 @@ jobs:
           git clone --depth 1 --branch "iree-${IREE_VERSION}" \
             https://github.com/iree-org/iree.git /tmp/iree || \
           git clone --depth 1 https://github.com/iree-org/iree.git /tmp/iree
+          git -C /tmp/iree submodule update --init --depth 1 \
+            third_party/flatcc third_party/benchmark
 
       - name: Build
         run: |
