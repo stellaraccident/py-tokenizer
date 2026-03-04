@@ -1,0 +1,75 @@
+# Copyright 2026 The IREE Authors
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions.
+# See https://llvm.org/LICENSE.txt for license information.
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
+name: Build Packages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  build_linux_x86_64:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build manylinux wheels
+        run: python build_tools/build_linux_packages.py --docker docker
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-x86_64
+          path: wheelhouse/*.whl
+
+  test_wheels:
+    needs: [build_linux_x86_64]
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Download wheels
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels-linux-x86_64
+          path: wheelhouse/
+
+      - name: Install wheel
+        run: |
+          # Find the wheel matching this Python version.
+          PYVER="cp$(echo ${{ matrix.python-version }} | tr -d '.')"
+          WHEEL=$(ls wheelhouse/iree_tokenizer-*-${PYVER}-*.manylinux*.whl 2>/dev/null | head -1)
+          if [ -z "$WHEEL" ]; then
+            echo "No wheel found for ${PYVER}, listing available:"
+            ls wheelhouse/
+            exit 1
+          fi
+          pip install "${WHEEL}"
+
+      - name: Install test deps
+        run: pip install pytest numpy
+
+      - name: Run tests
+        run: pytest tests/ -v

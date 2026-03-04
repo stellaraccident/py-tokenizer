@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 *.egg-info/
 dist/
+wheelhouse/
 *.so
 .pytest_cache/
 benchmark_results.json
