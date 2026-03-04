@@ -1,94 +1,43 @@
 # iree-tokenizer
 
-Python bindings for the [IREE](https://github.com/iree-org/iree) tokenizer — a
-high-performance C library supporting BPE, WordPiece, and Unigram models with
-full HuggingFace `tokenizer.json` compatibility.
+Python bindings for the [IREE](https://github.com/iree-org/iree) tokenizer —
+a high-performance C tokenizer with full HuggingFace `tokenizer.json`
+compatibility.
+
+- **Fast.** 3–12x faster than tiktoken, 10–20x faster than HF tokenizers.
+  Pure C hot path with zero allocations per token.
+- **Zero Python dependencies** beyond numpy. No Rust toolchain, no protobuf.
+- **Streaming encode/decode.** First-class support for incremental
+  tokenization — feed chunks in, get tokens out. Ideal for LLM inference.
+- **Drop-in compatible.** Loads any HuggingFace `tokenizer.json`. Supports
+  BPE, WordPiece, and Unigram models.
 
 ## Performance
 
-All benchmarks: GPT-2 tokenizer, 200 iterations, p50 latency.
-Machine: x86_64 Linux. Lower is better.
+### Encode
 
-### Encode (22K chars → 5000 tokens)
+![Encode benchmark](docs/img/bench_encode.svg)
 
-<!--
-iree: 438µs, tiktoken: 1220µs, hf: 5279µs
-Normalized to max (hf = 100%)
-iree: 8.3%, tiktoken: 23.1%, hf: 100%
--->
+Single-string encode of 22K characters into 5000 tokens. IREE completes in
+438 µs — 2.8x faster than tiktoken's Rust backend and 12x faster than
+HuggingFace tokenizers.
 
-<p align="center">
-<svg width="480" height="120" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    text { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; }
-    .label { fill: #c9d1d9; font-weight: 500; }
-    .value { fill: #8b949e; font-size: 12px; }
-  </style>
-  <text x="90" y="26" text-anchor="end" class="label">iree</text>
-  <rect x="96" y="12" width="32" height="22" rx="3" fill="#58a6ff"/>
-  <text x="136" y="28" class="value">438 µs  (12x faster)</text>
-  <text x="90" y="62" text-anchor="end" class="label">tiktoken</text>
-  <rect x="96" y="48" width="88" height="22" rx="3" fill="#f0883e"/>
-  <text x="192" y="64" class="value">1,220 µs  (4.3x faster)</text>
-  <text x="90" y="98" text-anchor="end" class="label">hf tokenizers</text>
-  <rect x="96" y="84" width="380" height="22" rx="3" fill="#da3633"/>
-  <text x="300" y="100" class="value" fill="#c9d1d9">5,279 µs</text>
-</svg>
-</p>
+### Decode
 
-### Decode (5000 tokens → text)
+![Decode benchmark](docs/img/bench_decode.svg)
 
-<!--
-iree: 28µs, tiktoken: 76µs, hf: 574µs
--->
+Decoding 5000 tokens back to text. IREE finishes in 28 µs — 2.7x faster
+than tiktoken and 20x faster than HuggingFace.
 
-<p align="center">
-<svg width="480" height="120" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    text { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; }
-    .label { fill: #c9d1d9; font-weight: 500; }
-    .value { fill: #8b949e; font-size: 12px; }
-  </style>
-  <text x="90" y="26" text-anchor="end" class="label">iree</text>
-  <rect x="96" y="12" width="19" height="22" rx="3" fill="#58a6ff"/>
-  <text x="123" y="28" class="value">28 µs  (20x faster)</text>
-  <text x="90" y="62" text-anchor="end" class="label">tiktoken</text>
-  <rect x="96" y="48" width="50" height="22" rx="3" fill="#f0883e"/>
-  <text x="154" y="64" class="value">76 µs  (7.6x faster)</text>
-  <text x="90" y="98" text-anchor="end" class="label">hf tokenizers</text>
-  <rect x="96" y="84" width="380" height="22" rx="3" fill="#da3633"/>
-  <text x="300" y="100" class="value" fill="#c9d1d9">574 µs</text>
-</svg>
-</p>
+### Batch Encode Throughput
 
-### Batch Encode Throughput (100 items)
+![Batch benchmark](docs/img/bench_batch.svg)
 
-<!--
-iree: 10.1M tok/s, tiktoken: 3.8M tok/s, hf: 0.87M tok/s
-Normalized to iree = 100%
--->
-
-<p align="center">
-<svg width="480" height="120" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    text { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; }
-    .label { fill: #c9d1d9; font-weight: 500; }
-    .value { fill: #8b949e; font-size: 12px; }
-  </style>
-  <text x="90" y="26" text-anchor="end" class="label">iree</text>
-  <rect x="96" y="12" width="380" height="22" rx="3" fill="#58a6ff"/>
-  <text x="300" y="28" class="value" fill="#c9d1d9">10.1M tokens/sec</text>
-  <text x="90" y="62" text-anchor="end" class="label">tiktoken</text>
-  <rect x="96" y="48" width="143" height="22" rx="3" fill="#f0883e"/>
-  <text x="247" y="64" class="value">3.8M tokens/sec</text>
-  <text x="90" y="98" text-anchor="end" class="label">hf tokenizers</text>
-  <rect x="96" y="84" width="33" height="22" rx="3" fill="#da3633"/>
-  <text x="137" y="100" class="value">0.87M tokens/sec</text>
-</svg>
-</p>
+Encoding 100 paragraphs in a single batch call using shared internal state.
+IREE sustains 10M tokens/sec with linear scaling across batch sizes.
 
 Run benchmarks yourself:
-```bash
+```
 pip install tokenizers tiktoken rich huggingface-hub
 python benchmarks/bench_comparison.py
 ```
@@ -96,8 +45,7 @@ python benchmarks/bench_comparison.py
 ## Install
 
 ```bash
-# Build from source (requires CMake 3.24+, Ninja, C++20 compiler)
-git clone --recurse-submodules https://github.com/iree-org/iree.git /path/to/iree
+git clone https://github.com/iree-org/iree.git /path/to/iree
 IREE_SOURCE_DIR=/path/to/iree pip install .
 ```
 
@@ -115,14 +63,14 @@ text = tok.decode(ids)                    # "Hello world"
 # Batch
 tok.encode_batch(["Hello", "world"])      # [[15496], [995]]
 
-# Numpy arrays (zero-copy)
+# Numpy (zero-copy)
 arr = tok.encode_to_array("Hello world")  # int32 ndarray
 
 # Rich encoding with byte offsets
 enc = tok.encode_rich("Hello world", track_offsets=True)
 # enc.ids, enc.offsets, enc.type_ids
 
-# Streaming decode (LLM inference pattern)
+# Streaming decode (LLM token-at-a-time pattern)
 from iree.tokenizer import decode_stream_iter
 for chunk in decode_stream_iter(tok, token_generator):
     print(chunk, end="", flush=True)
@@ -151,15 +99,15 @@ for chunk in decode_stream_iter(tok, token_generator):
 ## Development
 
 ```bash
-# Configure + build
+# Build
 cmake -B build -G Ninja -DIREE_SOURCE_DIR=/path/to/iree
 cmake --build build
 
-# Run tests (symlink .so into package)
+# Test
 ln -s build/_iree_tokenizer*.so src/iree/tokenizer/
 PYTHONPATH=src pytest tests/ -v
 
-# Run tests under ASAN (requires Clang)
+# ASAN (requires Clang)
 cmake -B build-asan -G Ninja \
   -DIREE_SOURCE_DIR=/path/to/iree \
   -DCMAKE_BUILD_TYPE=Debug \
