@@ -135,6 +135,28 @@ if(IREE_TOKENIZER_ENABLE_UBSAN)
 endif()
 
 ################################################################################
+# Native Architecture Optimization
+################################################################################
+
+option(IREE_TOKENIZER_NATIVE_ARCH
+  "Compile with -march=native for host CPU optimization" OFF)
+
+# Force -O3 in Release builds (CMake defaults to -O2).
+if(NOT MSVC)
+  string(REPLACE "-O2" "-O3" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+  string(REPLACE "-O2" "-O3" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+endif()
+
+if(IREE_TOKENIZER_NATIVE_ARCH)
+  if(MSVC)
+    message(WARNING "IREE_TOKENIZER_NATIVE_ARCH: -march=native not supported on MSVC, ignoring")
+  else()
+    message(STATUS "IREE_TOKENIZER_NATIVE_ARCH=ON: compiling with -march=native")
+    add_compile_options(-march=native)
+  endif()
+endif()
+
+################################################################################
 # Python Extension Module
 ################################################################################
 

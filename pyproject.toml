@@ -38,6 +38,7 @@ regex = '"package-version":\s*"(?P<value>[^"]+)"'
 
 [tool.scikit-build.cmake.define]
 IREE_SOURCE_DIR = {env = "IREE_SOURCE_DIR", default = ""}
+IREE_TOKENIZER_NATIVE_ARCH = {env = "IREE_TOKENIZER_NATIVE_ARCH", default = "OFF"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -123,6 +123,9 @@ cmake --build build-asan
 ln -sf build-asan/_iree_tokenizer*.so src/iree/tokenizer/
 LD_PRELOAD=$(clang++ -print-file-name=libclang_rt.asan.so) \
   ASAN_OPTIONS=detect_leaks=0 PYTHONPATH=src pytest tests/ -v
+
+# Optimized local build (-march=native)
+IREE_TOKENIZER_NATIVE_ARCH=ON pip install .
 ```
 
 ## License
