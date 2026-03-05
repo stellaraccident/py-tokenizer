@@ -58,14 +58,18 @@ jobs:
 
       - name: Install wheel
         run: |
-          # Find the wheel matching this Python version.
+          # Try version-specific wheel first (cp310, cp311), then abi3.
           PYVER="cp$(echo ${{ matrix.python-version }} | tr -d '.')"
-          WHEEL=$(ls wheelhouse/iree_tokenizer-*-${PYVER}-*.manylinux*.whl 2>/dev/null | head -1)
+          WHEEL=$(ls wheelhouse/iree_tokenizer-*-${PYVER}-${PYVER}-*.manylinux*.whl 2>/dev/null | head -1)
+          if [ -z "$WHEEL" ]; then
+            WHEEL=$(ls wheelhouse/iree_tokenizer-*-*-abi3-*.manylinux*.whl 2>/dev/null | head -1)
+          fi
           if [ -z "$WHEEL" ]; then
             echo "No wheel found for ${PYVER}, listing available:"
             ls wheelhouse/
             exit 1
           fi
+          echo "Installing: ${WHEEL}"
           pip install "${WHEEL}"
 
       - name: Install test deps

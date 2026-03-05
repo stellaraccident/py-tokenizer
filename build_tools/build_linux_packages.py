@@ -40,9 +40,7 @@ MANYLINUX_IMAGES = {
 DEFAULT_PYTHON_VERSIONS = [
     "cp310-cp310",
     "cp311-cp311",
-    "cp312-cp312",
-    "cp313-cp313",
-    "cp314-cp314",
+    "cp312-cp312",  # Produces abi3 wheel covering 3.12+
 ]
 
 
@@ -226,8 +224,10 @@ def run_in_docker(args: argparse.Namespace):
         )
 
         # Find any pre-existing wheels matching this version to clean them.
+        # Wheels may be version-specific (cp310-cp310) or abi3 (cp312-abi3).
         arch = platform.machine()
-        for old in output_dir.glob(f"iree_tokenizer-*-{pyver}-linux_{arch}.whl"):
+        cpver = pyver.split("-")[0]  # e.g. "cp312" from "cp312-cp312"
+        for old in output_dir.glob(f"iree_tokenizer-*-{cpver}-*-linux_{arch}.whl"):
             old.unlink()
             print(f"  Cleaned old wheel: {old.name}")
 
@@ -235,8 +235,9 @@ def run_in_docker(args: argparse.Namespace):
 
         if not args.no_repair:
             # Find the just-built generic wheel and repair it.
+            # May be version-specific or abi3.
             generic_wheels = list(
-                output_dir.glob(f"iree_tokenizer-*-{pyver}-linux_{arch}.whl")
+                output_dir.glob(f"iree_tokenizer-*-{cpver}-*-linux_{arch}.whl")
             )
             if not generic_wheels:
                 print(f"WARNING: No wheel found for {pyver} after build")
