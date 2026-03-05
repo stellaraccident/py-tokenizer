@@ -36,13 +36,66 @@ jobs:
           name: wheels-linux-x86_64
           path: wheelhouse/*.whl
 
+  build_windows_x86_64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build deps
+        run: pip install scikit-build-core nanobind numpy ninja
+
+      - name: Clone IREE
+        run: |
+          $IREE_VERSION = python -c "import json; print(json.load(open('version.json'))['iree-version'])"
+          git clone --depth 1 --branch "iree-$IREE_VERSION" https://github.com/iree-org/iree.git C:\iree
+          git -C C:\iree submodule update --init --depth 1 third_party/flatcc third_party/benchmark
+
+      - name: Build wheel
+        run: pip wheel --no-deps -v -w wheelhouse --config-settings=build-dir=C:/b .
+        env:
+          IREE_SOURCE_DIR: C:\iree
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows-x86_64
+          path: wheelhouse/*.whl
+
   test_wheels:
-    needs: [build_linux_x86_64]
-    runs-on: ubuntu-24.04
+    needs: [build_linux_x86_64, build_windows_x86_64]
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          - os: ubuntu-24.04
+            python-version: "3.10"
+            artifact: wheels-linux-x86_64
+          - os: ubuntu-24.04
+            python-version: "3.11"
+            artifact: wheels-linux-x86_64
+          - os: ubuntu-24.04
+            python-version: "3.12"
+            artifact: wheels-linux-x86_64
+          - os: ubuntu-24.04
+            python-version: "3.13"
+            artifact: wheels-linux-x86_64
+          - os: ubuntu-24.04
+            python-version: "3.14"
+            artifact: wheels-linux-x86_64
+          - os: windows-latest
+            python-version: "3.12"
+            artifact: wheels-windows-x86_64
+          - os: windows-latest
+            python-version: "3.13"
+            artifact: wheels-windows-x86_64
+          - os: windows-latest
+            python-version: "3.14"
+            artifact: wheels-windows-x86_64
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -53,16 +106,17 @@ jobs:
       - name: Download wheels
         uses: actions/download-artifact@v4
         with:
-          name: wheels-linux-x86_64
+          name: ${{ matrix.artifact }}
           path: wheelhouse/
 
       - name: Install wheel
+        shell: bash
         run: |
           # Try version-specific wheel first (cp310, cp311), then abi3.
           PYVER="cp$(echo ${{ matrix.python-version }} | tr -d '.')"
-          WHEEL=$(ls wheelhouse/iree_tokenizer-*-${PYVER}-${PYVER}-*.manylinux*.whl 2>/dev/null | head -1)
+          WHEEL=$(ls wheelhouse/iree_tokenizer-*-${PYVER}-${PYVER}-*.whl 2>/dev/null | head -1)
           if [ -z "$WHEEL" ]; then
-            WHEEL=$(ls wheelhouse/iree_tokenizer-*-*-abi3-*.manylinux*.whl 2>/dev/null | head -1)
+            WHEEL=$(ls wheelhouse/iree_tokenizer-*-*-abi3-*.whl 2>/dev/null | head -1)
           fi
           if [ -z "$WHEEL" ]; then
             echo "No wheel found for ${PYVER}, listing available:"
