@@ -50,9 +50,10 @@ jobs:
           if ! echo "$IREE_VERSION" | grep -qE '^[a-zA-Z0-9._-]+$'; then
             echo "Invalid IREE version: $IREE_VERSION" >&2; exit 1
           fi
-          git clone --depth 1 --branch "iree-${IREE_VERSION}" \
-            https://github.com/iree-org/iree.git /tmp/iree || \
-          git clone --depth 1 https://github.com/iree-org/iree.git /tmp/iree
+          git init /tmp/iree
+          git -C /tmp/iree remote add origin https://github.com/iree-org/iree.git
+          git -C /tmp/iree fetch --depth 1 origin "${IREE_VERSION}"
+          git -C /tmp/iree checkout FETCH_HEAD
           git -C /tmp/iree submodule update --init --depth 1 \
             third_party/flatcc third_party/benchmark
 
@@ -96,9 +97,10 @@ jobs:
           if ! echo "$IREE_VERSION" | grep -qE '^[a-zA-Z0-9._-]+$'; then
             echo "Invalid IREE version: $IREE_VERSION" >&2; exit 1
           fi
-          git clone --depth 1 --branch "iree-${IREE_VERSION}" \
-            https://github.com/iree-org/iree.git /tmp/iree || \
-          git clone --depth 1 https://github.com/iree-org/iree.git /tmp/iree
+          git init /tmp/iree
+          git -C /tmp/iree remote add origin https://github.com/iree-org/iree.git
+          git -C /tmp/iree fetch --depth 1 origin "${IREE_VERSION}"
+          git -C /tmp/iree checkout FETCH_HEAD
           git -C /tmp/iree submodule update --init --depth 1 \
             third_party/flatcc third_party/benchmark
 

@@ -1,8 +1,8 @@
 # iree-tokenizer
 
 Python bindings for the [IREE](https://github.com/iree-org/iree) tokenizer —
-a high-performance C tokenizer with full HuggingFace `tokenizer.json`
-compatibility.
+a high-performance C tokenizer with full HuggingFace `tokenizer.json` and
+OpenAI tiktoken compatibility.
 
 - **Fast.** 3–12x faster than tiktoken, 10–20x faster than HF tokenizers.
   Pure C hot path with zero allocations per token.
@@ -10,8 +10,8 @@ compatibility.
 - **Small.** ~317KiB (compared to 1-3MiB for alternatives).
 - **Streaming encode/decode.** First-class support for incremental
   tokenization — feed chunks in, get tokens out. Ideal for LLM inference.
-- **Drop-in compatible.** Loads any HuggingFace `tokenizer.json`. Supports
-  BPE, WordPiece, and Unigram models.
+- **Drop-in compatible.** Loads any HuggingFace `tokenizer.json` or OpenAI
+  `.tiktoken` vocabulary. Supports BPE, WordPiece, and Unigram models.
 
 Based on the [IREE high-speed tokenizer library](https://github.com/iree-org/iree/blob/main/runtime/src/iree/tokenizer/README.md):
 
@@ -76,6 +76,9 @@ from iree.tokenizer import Tokenizer
 
 tok = Tokenizer.from_file("tokenizer.json")
 
+# Or load a tiktoken vocabulary
+tok = Tokenizer.from_tiktoken("cl100k_base.tiktoken", encoding="cl100k_base")
+
 # Encode / decode
 ids = tok.encode("Hello world")          # [15496, 995]
 text = tok.decode(ids)                    # "Hello world"
@@ -103,6 +106,9 @@ for chunk in decode_stream_iter(tok, token_generator):
 | `Tokenizer.from_file(path)` | `Tokenizer` | Load from `tokenizer.json` |
 | `Tokenizer.from_str(json)` | `Tokenizer` | Load from JSON string |
 | `Tokenizer.from_buffer(bytes)` | `Tokenizer` | Load from bytes |
+| `Tokenizer.from_tiktoken(path, encoding)` | `Tokenizer` | Load from `.tiktoken` file |
+| `Tokenizer.from_tiktoken_str(data, encoding)` | `Tokenizer` | Load from tiktoken data string |
+| `Tokenizer.from_tiktoken_buffer(bytes, encoding)` | `Tokenizer` | Load from tiktoken bytes |
 | `tok.encode(text)` | `list[int]` | Encode text to token IDs |
 | `tok.encode_to_array(text)` | `np.ndarray` | Encode to numpy int32 array |
 | `tok.encode_rich(text)` | `Encoding` | IDs + byte offsets + type IDs |
@@ -122,8 +128,11 @@ A streaming `iree-tokenizer-python` command is included. It reads from stdin, wr
 JSONL to stdout, and shows live throughput on stderr.
 
 ```bash
-# Encode text to token IDs
+# Encode text to token IDs (HuggingFace tokenizer.json)
 echo "Hello world" | iree-tokenizer-python encode -t tokenizer.json
+
+# Encode with a tiktoken vocabulary
+echo "Hello world" | iree-tokenizer-python encode -t cl100k_base.tiktoken --encoding cl100k_base
 # {"seq":0,"text":"Hello world","ids":[15496,995],"n_tokens":2,...}
 
 # Decode token IDs back to text

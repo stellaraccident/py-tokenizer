@@ -268,9 +268,17 @@ def cmd_info(tok):
 
 
 def _add_common_args(subparser):
-    subparser.add_argument("-t", "--tokenizer", help="Path to tokenizer.json")
+    subparser.add_argument(
+        "-t", "--tokenizer", help="Path to tokenizer.json or .tiktoken file"
+    )
     subparser.add_argument(
         "--tokenizer-json", help="Tokenizer JSON string (alternative to -t)"
+    )
+    subparser.add_argument(
+        "--encoding",
+        help="Tiktoken encoding name (required for .tiktoken files). "
+        "Supported: cl100k_base, o200k_base, o200k_harmony, r50k_base, "
+        "gpt2, p50k_base, p50k_edit.",
     )
 
 
@@ -311,6 +319,14 @@ def make_parser():
 
 def _load_tokenizer(args):
     if args.tokenizer:
+        if args.tokenizer.endswith(".tiktoken"):
+            if not args.encoding:
+                print(
+                    "Error: --encoding required for .tiktoken files",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            return Tokenizer.from_tiktoken(args.tokenizer, encoding=args.encoding)
         return Tokenizer.from_file(args.tokenizer)
     if args.tokenizer_json:
         return Tokenizer.from_str(args.tokenizer_json)
