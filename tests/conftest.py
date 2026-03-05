@@ -16,3 +16,11 @@ TESTDATA = pathlib.Path(__file__).parent / "testdata"
 def bpe_tokenizer():
     """Minimal BPE byte-level tokenizer for testing."""
     return Tokenizer.from_file(str(TESTDATA / "bpe_bytelevel_minimal.json"))
+
+
+@pytest.fixture
+def tiktoken_tokenizer():
+    """Minimal tiktoken (gpt2 encoding) tokenizer for testing."""
+    return Tokenizer.from_tiktoken(
+        str(TESTDATA / "tiktoken_gpt2.tiktoken"), encoding="gpt2"
+    )

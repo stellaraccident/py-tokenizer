@@ -20,6 +20,7 @@
 
 #include "encoding.h"
 #include "iree/tokenizer/format/huggingface/tokenizer_json.h"
+#include "iree/tokenizer/format/tiktoken/tiktoken.h"
 #include "iree/tokenizer/vocab/vocab.h"
 #include "status_util.h"
 
@@ -475,6 +476,44 @@ static TokenizerWrapper FromJsonString(const std::string& json) {
   return TokenizerWrapper(tokenizer);
 }
 
+static TokenizerWrapper FromTiktokenString(const std::string& data,
+                                           const std::string& encoding) {
+  iree_string_view_t enc_sv = {.data = encoding.data(),
+                               .size = encoding.size()};
+  const iree_tokenizer_tiktoken_config_t* config =
+      iree_tokenizer_tiktoken_config_by_name(enc_sv);
+  if (!config) {
+    throw nb::value_error(
+        ("Unknown tiktoken encoding: " + encoding +
+         ". Supported: cl100k_base, o200k_base, o200k_harmony, "
+         "r50k_base, gpt2, p50k_base, p50k_edit")
+            .c_str());
+  }
+  iree_tokenizer_t* tokenizer = nullptr;
+  iree_string_view_t data_sv = {.data = data.data(), .size = data.size()};
+  CheckStatus(iree_tokenizer_from_tiktoken(
+      data_sv, config, iree_allocator_system(), &tokenizer));
+  return TokenizerWrapper(tokenizer);
+}
+
+static std::string ReadFileContents(const std::string& path) {
+  FILE* f = fopen(path.c_str(), "rb");
+  if (!f) throw nb::value_error(("Cannot open file: " + path).c_str());
+  fseek(f, 0, SEEK_END);
+  long size = ftell(f);
+  if (size < 0) {
+    fclose(f);
+    throw nb::value_error("Cannot determine file size (not a regular file?)");
+  }
+  fseek(f, 0, SEEK_SET);
+  std::string contents(size, '\0');
+  size_t read = fread(contents.data(), 1, size, f);
+  fclose(f);
+  if (static_cast<long>(read) != size)
+    throw nb::value_error("Failed to read file");
+  return contents;
+}
+
 // ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
@@ -486,24 +525,7 @@ void RegisterTokenizer(nb::module_& m) {
       .def_static(
           "from_file",
           [](const std::string& path) -> TokenizerWrapper {
-            // Read file into string.
-            FILE* f = fopen(path.c_str(), "rb");
-            if (!f)
-              throw nb::value_error(("Cannot open file: " + path).c_str());
-            fseek(f, 0, SEEK_END);
-            long size = ftell(f);
-            if (size < 0) {
-              fclose(f);
-              throw nb::value_error(
-                  "Cannot determine file size (not a regular file?)");
-            }
-            fseek(f, 0, SEEK_SET);
-            std::string json(size, '\0');
-            size_t read = fread(json.data(), 1, size, f);
-            fclose(f);
-            if (static_cast<long>(read) != size)
-              throw nb::value_error("Failed to read file");
-            return FromJsonString(json);
+            return FromJsonString(ReadFileContents(path));
           },
           nb::arg("path"),
           "Load a tokenizer from a HuggingFace tokenizer.json file.")
@@ -516,6 +538,28 @@ void RegisterTokenizer(nb::module_& m) {
             return FromJsonString(json);
           },
           nb::arg("data"), "Load a tokenizer from bytes.")
+      .def_static(
+          "from_tiktoken",
+          [](const std::string& path,
+             const std::string& encoding) -> TokenizerWrapper {
+            return FromTiktokenString(ReadFileContents(path), encoding);
+          },
+          nb::arg("path"), nb::arg("encoding"),
+          "Load a tokenizer from a .tiktoken file and encoding name.\n\n"
+          "Supported encodings: cl100k_base, o200k_base, o200k_harmony, "
+          "r50k_base, gpt2, p50k_base, p50k_edit.")
+      .def_static("from_tiktoken_str", &FromTiktokenString, nb::arg("data"),
+                  nb::arg("encoding"),
+                  "Load a tokenizer from tiktoken data string and encoding "
+                  "name.")
+      .def_static(
+          "from_tiktoken_buffer",
+          [](nb::bytes data, const std::string& encoding) -> TokenizerWrapper {
+            std::string str(data.c_str(), data.size());
+            return FromTiktokenString(str, encoding);
+          },
+          nb::arg("data"), nb::arg("encoding"),
+          "Load a tokenizer from tiktoken bytes and encoding name.")
 
       // Encode.
       .def("encode", &TokenizerWrapper::Encode, nb::arg("text"),

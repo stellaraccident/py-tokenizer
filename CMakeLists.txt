@@ -50,7 +50,7 @@ option(IREE_TOKENIZER_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
 ################################################################################
 
 string(JSON IREE_VERSION GET ${VERSION_JSON_STRING} iree-version)
-set(IREE_GIT_TAG "iree-${IREE_VERSION}")
+set(IREE_GIT_TAG "${IREE_VERSION}")
 set(IREE_SOURCE_DIR "" CACHE FILEPATH "Path to IREE source")
 
 # IREE build flags — we only need the tokenizer, not the full runtime.
@@ -181,6 +181,7 @@ endif()
 target_link_libraries(_iree_tokenizer PRIVATE
   iree_tokenizer_tokenizer
   iree_tokenizer_format_huggingface_tokenizer_json
+  iree_tokenizer_format_tiktoken_tiktoken
 )
 
 # Apply sanitizer flags.
