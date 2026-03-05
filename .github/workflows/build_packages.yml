@@ -45,6 +45,8 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install build deps
         run: pip install scikit-build-core nanobind numpy ninja
 
