@@ -29,7 +29,7 @@ test = ["pytest>=7", "tokenizers", "tiktoken"]
 bench = ["tokenizers", "tiktoken", "rich"]
 
 [project.scripts]
-iree-tokenize = "iree.tokenizer.cli:main"
+iree-tokenizer-python = "iree.tokenizer.cli:main"
 
 [tool.scikit-build]
 cmake.build-type = "Release"

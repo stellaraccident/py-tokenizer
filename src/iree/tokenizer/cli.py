@@ -10,9 +10,9 @@
 Pipe-compatible encode/decode with JSONL output and live throughput on stderr.
 
 Usage:
-    echo "Hello world" | iree-tokenize encode -t tokenizer.json
-    cat corpus.txt | iree-tokenize encode -t tok.json | iree-tokenize decode -t tok.json
-    iree-tokenize info -t tokenizer.json
+    echo "Hello world" | iree-tokenizer-python encode -t tokenizer.json
+    cat corpus.txt | iree-tokenizer-python encode -t tok.json | iree-tokenizer-python decode -t tok.json
+    iree-tokenizer-python info -t tokenizer.json
 
 Note that this tool illustrates streaming processing but the overhead of JSON
 processing is expensive and skews throughput. Treat this as an example of how
@@ -276,7 +276,7 @@ def _add_common_args(subparser):
 
 def make_parser():
     parser = argparse.ArgumentParser(
-        prog="iree-tokenize",
+        prog="iree-tokenizer-python",
         description="Streaming tokenizer CLI backed by IREE",
     )
     sub = parser.add_subparsers(dest="command", required=True)

@@ -4,7 +4,7 @@
 # See https://llvm.org/LICENSE.txt for license information.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-"""Integration tests for the iree-tokenize CLI."""
+"""Integration tests for the iree-tokenizer-python CLI."""
 
 import json
 import pathlib
