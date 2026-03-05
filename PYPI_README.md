@@ -115,6 +115,11 @@ Output is chainable: encode output feeds directly into decode and vice versa.
 Use `--compact` to omit timing fields, `--rich` for byte offsets, or
 `--no-progress` to suppress the stderr throughput display.
 
+Note that this tool illustrates streaming processing but the overhead of JSON
+processing is expensive and skews throughput. Treat this as an example of how
+to operate the streaming API vs a benchmarking tool or a tool expected to
+achieve maximum throughput.
+
 ## License
 
 Apache 2.0 with LLVM Exceptions — see [LICENSE](LICENSE).
