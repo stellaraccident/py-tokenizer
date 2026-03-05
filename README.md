@@ -6,11 +6,17 @@ compatibility.
 
 - **Fast.** 3–12x faster than tiktoken, 10–20x faster than HF tokenizers.
   Pure C hot path with zero allocations per token.
-- **Zero Python dependencies** beyond numpy. No Rust toolchain, no protobuf.
+- **Zero Python dependencies** beyond numpy.
+- **Small.** ~317KiB (compared to 1-3MiB for alternatives).
 - **Streaming encode/decode.** First-class support for incremental
   tokenization — feed chunks in, get tokens out. Ideal for LLM inference.
 - **Drop-in compatible.** Loads any HuggingFace `tokenizer.json`. Supports
   BPE, WordPiece, and Unigram models.
+
+Based on the IREE high-speed tokenizer library:
+
+- **Optimized for cache utilization.** Efficiently utilizes cache on both large and small CPUs. No dependencies and small footprint make it ideal for embedded/client and inclusion into other projects.
+- **Unique Algorithmic optimizations.** Pull-based streaming processor with bounded/small, deterministic memory usage. Various novel optimizations not seen elsewhere.
 - **GPU-ready.** Designed to be compatible with executing tiled on the GPU,
   not just the host.
 
