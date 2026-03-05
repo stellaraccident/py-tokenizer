@@ -59,7 +59,10 @@ jobs:
           if ($IREE_VERSION -notmatch '^[a-zA-Z0-9._-]+$') {
             Write-Error "Invalid IREE version: $IREE_VERSION"; exit 1
           }
-          git clone --depth 1 --branch "iree-$IREE_VERSION" https://github.com/iree-org/iree.git C:\iree
+          git init C:\iree
+          git -C C:\iree remote add origin https://github.com/iree-org/iree.git
+          git -C C:\iree fetch --depth 1 origin "$IREE_VERSION"
+          git -C C:\iree checkout FETCH_HEAD
           git -C C:\iree submodule update --init --depth 1 third_party/flatcc third_party/benchmark
 
       - name: Build wheel

@@ -120,18 +120,20 @@ def clone_iree(tag: str, dest: Path):
     if dest.exists():
         print(f"IREE sources already present at {dest}")
         return
+    run(["git", "init", str(dest)])
     run(
         [
             "git",
-            "clone",
-            "--depth",
-            "1",
-            "--branch",
-            f"iree-{tag}",
-            "https://github.com/iree-org/iree.git",
+            "-C",
             str(dest),
+            "remote",
+            "add",
+            "origin",
+            "https://github.com/iree-org/iree.git",
         ]
     )
+    run(["git", "-C", str(dest), "fetch", "--depth", "1", "origin", tag])
+    run(["git", "-C", str(dest), "checkout", "FETCH_HEAD"])
     # Init required submodules (flatcc for the tokenizer JSON parser,
     # benchmark because IREE's CMakeLists.txt unconditionally adds it).
     run(
