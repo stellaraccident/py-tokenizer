@@ -30,6 +30,7 @@ bench = ["tokenizers", "tiktoken", "rich"]
 [tool.scikit-build]
 cmake.build-type = "Release"
 wheel.packages = ["src/iree"]
+wheel.py-api = "cp312"
 
 [tool.scikit-build.metadata.version]
 provider = "scikit_build_core.metadata.regex"

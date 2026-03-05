@@ -94,7 +94,8 @@ endif()
 # nanobind
 ################################################################################
 
-find_package(Python 3.10 COMPONENTS Interpreter Development.Module REQUIRED)
+find_package(Python 3.10 COMPONENTS Interpreter Development.Module
+  Development.SABIModule REQUIRED)
 
 # nanobind: prefer system install, fall back to FetchContent.
 find_package(nanobind QUIET)
@@ -139,7 +140,7 @@ endif()
 ################################################################################
 
 nanobind_add_module(_iree_tokenizer
-  NB_STATIC LTO
+  NB_STATIC LTO STABLE_ABI FREE_THREADED
   src/bindings/module.cc
   src/bindings/tokenizer.cc
   src/bindings/streaming.cc
