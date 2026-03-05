@@ -10,7 +10,7 @@ from iree.tokenizer import Tokenizer
 
 
 def test_vocab_size(bpe_tokenizer):
-    assert bpe_tokenizer.vocab_size > 0
+    assert bpe_tokenizer.vocab_size == 112
 
 
 def test_model_type(bpe_tokenizer):
@@ -18,10 +18,8 @@ def test_model_type(bpe_tokenizer):
 
 
 def test_token_to_id(bpe_tokenizer):
-    # Token "!" is typically id 0 in byte-level BPE.
-    result = bpe_tokenizer.token_to_id("!")
-    assert result is not None
-    assert isinstance(result, int)
+    result = bpe_tokenizer.token_to_id("H")
+    assert result == 39
 
 
 def test_token_to_id_not_found(bpe_tokenizer):
@@ -31,8 +29,7 @@ def test_token_to_id_not_found(bpe_tokenizer):
 
 def test_id_to_token(bpe_tokenizer):
     token = bpe_tokenizer.id_to_token(0)
-    assert token is not None
-    assert isinstance(token, str)
+    assert token == "!"
 
 
 def test_id_to_token_out_of_range(bpe_tokenizer):

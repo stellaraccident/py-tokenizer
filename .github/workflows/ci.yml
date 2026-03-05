@@ -109,9 +109,16 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release
           cmake --build build --target _iree_tokenizer
 
-      - name: Run benchmarks
+      - name: Validate correctness
         run: |
           ln -s $(pwd)/build/_iree_tokenizer*.so src/iree/tokenizer/
+          PYTHONPATH=src python benchmarks/bench_comparison.py \
+            --iterations 5 \
+            --validate \
+            --output /dev/null
+
+      - name: Run benchmarks
+        run: |
           PYTHONPATH=src python benchmarks/bench_comparison.py \
             --iterations 100 \
             --output benchmark_results.json

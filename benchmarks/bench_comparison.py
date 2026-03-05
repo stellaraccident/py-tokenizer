@@ -185,6 +185,65 @@ def fmt_val(v):
 # ---------------------------------------------------------------------------
 
 
+def validate_backends(backends: dict) -> bool:
+    """Cross-backend correctness checks. Returns True if all pass."""
+    ok = True
+    backend_names = sorted(backends.keys())
+
+    # Check 1: Cross-backend agreement on encode output.
+    print("\n[validate] Cross-backend agreement...")
+    for corpus_name, text in CORPUS.items():
+        results = {}
+        for name in backend_names:
+            _, encode, _ = backends[name]
+            results[name] = encode(text)
+        ref_name = backend_names[0]
+        ref_ids = results[ref_name]
+        for name in backend_names[1:]:
+            if results[name] != ref_ids:
+                print(
+                    f"  FAIL: {name} != {ref_name} on corpus '{corpus_name}' "
+                    f"({len(results[name])} vs {len(ref_ids)} tokens)"
+                )
+                ok = False
+            else:
+                print(f"  OK: {ref_name} == {name} on '{corpus_name}'")
+
+    # Check 2: Encode-decode roundtrip.
+    print("[validate] Encode-decode roundtrip...")
+    for corpus_name, text in CORPUS.items():
+        for name in backend_names:
+            _, encode, decode = backends[name]
+            ids = encode(text)
+            decoded = decode(ids)
+            if decoded != text:
+                print(
+                    f"  FAIL: {name} roundtrip on '{corpus_name}': "
+                    f"decoded {len(decoded)} chars vs original {len(text)}"
+                )
+                ok = False
+            else:
+                print(f"  OK: {name} roundtrip on '{corpus_name}'")
+
+    # Check 3: Batch consistency (iree only).
+    if "iree" in backends:
+        print("[validate] Batch consistency (iree)...")
+        tok, encode, _ = backends["iree"]
+        for corpus_name, text in CORPUS.items():
+            single_ids = encode(text)
+            batch_ids = tok.encode_batch([text])[0]
+            if batch_ids != single_ids:
+                print(
+                    f"  FAIL: encode_batch != encode on '{corpus_name}' "
+                    f"({len(batch_ids)} vs {len(single_ids)} tokens)"
+                )
+                ok = False
+            else:
+                print(f"  OK: batch consistency on '{corpus_name}'")
+
+    return ok
+
+
 def main():
     parser = argparse.ArgumentParser(description="iree-tokenizer benchmarks")
     parser.add_argument("--warmup", type=int, default=5)
@@ -200,7 +259,17 @@ def main():
         help="tiktoken encoding name",
     )
     parser.add_argument("--output", default="benchmark_results.json")
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="Run cross-backend correctness checks after benchmarking",
+    )
     args = parser.parse_args()
+
+    if args.validate:
+        print(
+            "WARNING: --validate enabled; correctness checks will run after benchmarks.\n"
+        )
 
     backends = {}
 
@@ -268,11 +337,19 @@ def main():
             "warmup": args.warmup,
             "iterations": args.iterations,
             "model": args.model,
+            "validated": args.validate,
         },
     }
     with open(args.output, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {args.output}")
+
+    # Run validation after saving results (no timing pollution).
+    if args.validate:
+        if not validate_backends(backends):
+            print("\nVALIDATION FAILED", file=sys.stderr)
+            sys.exit(2)
+        print("\nAll validation checks passed.")
 
 
 if __name__ == "__main__":

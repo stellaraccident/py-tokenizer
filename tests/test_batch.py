@@ -14,9 +14,9 @@ def test_encode_batch(bpe_tokenizer):
     texts = ["Hello", "world", "foo bar"]
     batch = bpe_tokenizer.encode_batch(texts)
     assert len(batch) == 3
-    for ids in batch:
-        assert isinstance(ids, list)
-        assert len(ids) > 0
+    assert batch[0] == [39, 68, 105]
+    assert batch[1] == [86, 108]
+    assert batch[2] == [69, 78, 78, 94, 65, 64, 81]
 
 
 def test_encode_batch_matches_single(bpe_tokenizer):
@@ -49,5 +49,5 @@ def test_encode_batch_to_array(bpe_tokenizer):
     assert flat.dtype == np.int32
     assert isinstance(lengths, np.ndarray)
     assert lengths.dtype == np.int64
-    assert len(lengths) == 2
-    assert int(lengths.sum()) == len(flat)
+    np.testing.assert_array_equal(lengths, [3, 2])
+    np.testing.assert_array_equal(flat, [39, 68, 105, 86, 108])

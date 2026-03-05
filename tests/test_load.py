@@ -15,19 +15,19 @@ BPE_PATH = TESTDATA / "bpe_bytelevel_minimal.json"
 
 def test_from_file():
     tok = Tokenizer.from_file(str(BPE_PATH))
-    assert tok.vocab_size > 0
+    assert tok.vocab_size == 112
 
 
 def test_from_str():
     json_str = BPE_PATH.read_text()
     tok = Tokenizer.from_str(json_str)
-    assert tok.vocab_size > 0
+    assert tok.vocab_size == 112
 
 
 def test_from_buffer():
     data = BPE_PATH.read_bytes()
     tok = Tokenizer.from_buffer(data)
-    assert tok.vocab_size > 0
+    assert tok.vocab_size == 112
 
 
 def test_from_file_not_found():
