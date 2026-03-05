@@ -29,7 +29,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-REPO = "stellaraccident/py-tokenizer"
+DEFAULT_REPO = "iree-org/iree-tokenizer"
 
 
 def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
@@ -37,14 +37,14 @@ def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, check=True, **kwargs)
 
 
-def get_latest_run_id() -> str:
+def get_latest_run_id(repo: str) -> str:
     result = run(
         [
             "gh",
             "run",
             "list",
             "--repo",
-            REPO,
+            repo,
             "--workflow",
             "build_packages.yml",
             "--branch",
@@ -67,8 +67,9 @@ def get_latest_run_id() -> str:
     return run_id
 
 
-def download_artifacts(run_id: str, dest: Path):
+def download_artifacts(run_id: str, repo: str, dest: Path):
     dest.mkdir(parents=True, exist_ok=True)
+    # Download all wheel artifacts from the run.
     run(
         [
             "gh",
@@ -76,13 +77,19 @@ def download_artifacts(run_id: str, dest: Path):
             "download",
             run_id,
             "--repo",
-            REPO,
-            "--name",
-            "wheels-linux-x86_64",
+            repo,
+            "--pattern",
+            "wheels-*",
             "--dir",
             str(dest),
         ]
     )
+    # gh downloads into subdirectories; flatten them.
+    for subdir in dest.iterdir():
+        if subdir.is_dir():
+            for whl in subdir.glob("*.whl"):
+                whl.rename(dest / whl.name)
+            subdir.rmdir()
 
 
 def upload_wheels(wheel_dir: Path, test_pypi: bool, dry_run: bool):
@@ -131,19 +138,24 @@ def main():
         default=None,
         help="Directory to download wheels into (default: temp dir)",
     )
+    parser.add_argument(
+        "--repo",
+        default=DEFAULT_REPO,
+        help=f"GitHub repo (default: {DEFAULT_REPO})",
+    )
     args = parser.parse_args()
 
-    run_id = args.run_id or get_latest_run_id()
+    run_id = args.run_id or get_latest_run_id(args.repo)
     print(f"Using run ID: {run_id}")
 
     if args.output_dir:
         dest = Path(args.output_dir)
-        download_artifacts(run_id, dest)
+        download_artifacts(run_id, args.repo, dest)
         upload_wheels(dest, args.test_pypi, args.dry_run)
     else:
         with tempfile.TemporaryDirectory(prefix="iree-tokenizer-wheels-") as tmpdir:
             dest = Path(tmpdir)
-            download_artifacts(run_id, dest)
+            download_artifacts(run_id, args.repo, dest)
             upload_wheels(dest, args.test_pypi, args.dry_run)
 
 
