@@ -3,8 +3,6 @@
 ## Prerequisites
 
 - Push access to `iree-org/iree-tokenizer-py`
-- `twine` installed (`pip install twine`)
-- PyPI credentials configured (or a PyPI API token)
 
 ## Release process
 
@@ -34,46 +32,51 @@ python build_tools/make_release.py --version X.Y.Z --bump-dev --dry-run
 git push origin main --tags
 ```
 
-### 3. Build wheels
+The `release.yml` workflow automatically triggers on the `vX.Y.Z` tag and:
+1. Builds Linux and Windows wheels (via `build_packages.yml`)
+2. Tests them across Python 3.10–3.14
+3. Publishes to PyPI via OIDC trusted publishing
 
-**Current workaround:** The Build Packages workflow does not yet trigger on
-tags. You must manually dispatch it:
+Monitor progress at:
+https://github.com/iree-org/iree-tokenizer-py/actions/workflows/release.yml
 
-1. Go to **Actions > Build Packages** on GitHub
-2. Click **Run workflow**
-3. Select the `vX.Y.Z` tag as the branch/ref
-4. Wait for the build to complete
-
-### 4. Publish to PyPI
-
-Download the wheel artifacts from the tag build run and upload:
-
-```bash
-# Download artifacts from the run and upload to PyPI
-python build_tools/publish_artifacts.py --run-id <RUN_ID>
-
-# Or for a test run against TestPyPI first:
-python build_tools/publish_artifacts.py --run-id <RUN_ID> --test-pypi
-```
-
-You can find the run ID in the Actions UI URL or via:
-```bash
-gh run list --workflow "Build Packages" --repo iree-org/iree-tokenizer-py
-```
-
-### 5. Create a GitHub release (optional)
+### 3. Create a GitHub release (optional)
 
 ```bash
 gh release create vX.Y.Z --repo iree-org/iree-tokenizer-py \
   --title "vX.Y.Z" --generate-notes
 ```
 
-## Known issues
+## Manual / emergency publishing
 
-The release workflow has several manual steps that should be automated. See
-https://github.com/iree-org/iree-tokenizer-py/issues/9 for planned
-improvements including tag-triggered builds and automated PyPI publishing
-via OIDC trusted publishing.
+If the automated publish fails, you can download wheels from a CI run and
+upload manually with twine:
+
+```bash
+pip install twine
+python build_tools/publish_artifacts.py --run-id <RUN_ID>
+
+# Or for TestPyPI:
+python build_tools/publish_artifacts.py --run-id <RUN_ID> --test-pypi
+```
+
+Find the run ID via:
+```bash
+gh run list --workflow "Release" --repo iree-org/iree-tokenizer-py
+```
+
+## PyPI trusted publishing setup
+
+The automated publish uses [PyPI trusted publishing](https://docs.pypi.org/trusted-publishers/)
+(OIDC). This is configured on pypi.org under the `iree-tokenizer` package
+settings with:
+
+- **Repository:** `iree-org/iree-tokenizer-py`
+- **Workflow:** `release.yml`
+- **Environment:** `pypi`
+
+A corresponding `pypi` environment must exist in the GitHub repository
+settings (Settings > Environments).
 
 ## Version scheme
 

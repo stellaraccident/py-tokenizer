@@ -17,9 +17,9 @@ Usage:
     # Dry run (show what would happen):
     python build_tools/make_release.py --version 0.1.0 --bump-dev --dry-run
 
-After running, manually:
+After running:
     git push origin main --tags
-    python build_tools/publish_artifacts.py --latest
+    # The release.yml workflow handles building and publishing automatically.
 """
 
 import argparse
@@ -126,8 +126,12 @@ def main():
     print(f"\n{'='*60}")
     print("Done! Next steps:")
     print(f"  git push origin main --tags")
-    print(f"  # Wait for CI to build wheels, then:")
-    print(f"  python build_tools/publish_artifacts.py --latest")
+    print()
+    print("The release.yml workflow will automatically build wheels and")
+    print("publish to PyPI when the tag is pushed. Monitor progress at:")
+    print(
+        "  https://github.com/iree-org/iree-tokenizer-py/actions/workflows/release.yml"
+    )
     if args.dry_run:
         print("\n(dry run — no changes were made)")
 

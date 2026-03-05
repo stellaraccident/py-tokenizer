@@ -12,6 +12,7 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}

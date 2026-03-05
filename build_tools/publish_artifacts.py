@@ -29,7 +29,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-DEFAULT_REPO = "iree-org/iree-tokenizer"
+DEFAULT_REPO = "iree-org/iree-tokenizer-py"
 
 
 def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
